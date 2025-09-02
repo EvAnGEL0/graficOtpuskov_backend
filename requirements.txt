@@ -1,5 +1,5 @@
 # requirements.txt
-fastapi
+fastapi[all]
 uvicorn
 python-jose[cryptography]
 passlib[bcrypt]
