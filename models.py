@@ -54,6 +54,21 @@ class Role(Base):
     
     # Обратная связь: роль → пользователи
     users = relationship("User", back_populates="role")
+class RequestStatus(Base):
+    """
+    Справочник статусов заявок на отпуск
+    
+   
+    """
+    __tablename__ = "request_statuses"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False, comment="Название статуса")
+    description = Column(String(255), comment="Подробное описание статуса")
+    
+    # Обратная связь: статус → заявки на отпуск
+    vacations = relationship("Vacation", back_populates="status")
+
 
 # ----------------------------------------------------------ОСНОВНЫЕ ТАБЛИЦЫ------------------------------------------------------------ #
 
@@ -132,3 +147,49 @@ class User(Base):
     def set_password(self, password):
         self.hashed_password = pwd_context.hash(password)
 
+class Vacation(Base):
+    """
+    Таблица графика отпусков
+    
+    Содержит заявки на отпуск сотрудников.
+    
+    Особенности:
+    - Связана со справочником статусов
+    - Привязана к сотруднику
+    - Содержит период отпуска
+    - Поддерживает комментарии для отклоненных заявок
+    """
+    __tablename__ = "vacations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    start_date = Column(Date, nullable=False, comment="Дата начала отпуска")
+    end_date = Column(Date, nullable=False, comment="Дата окончания отпуска")
+    comment = Column(String(255), comment="Комментарий (например, причина отклонения)")
+    
+    # Связь со сотрудником (многие к одному)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False,
+                        comment="ID сотрудника из таблицы employees")
+    employee = relationship("Employee", back_populates="vacations",
+                          comment="Сотрудник, подавший заявку")
+    
+    # =============== СВЯЗЬ СО СТАТУСОМ =============== #
+    status_id = Column(Integer, ForeignKey("request_statuses.id"), nullable=False,
+                      comment="ID статуса из справочника request_statuses")
+    status = relationship("RequestStatus", back_populates="vacations",
+                        comment="Текущий статус заявки")
+    
+    # =============== ДОПОЛНИТЕЛЬНЫЕ СВОЙСТВА =============== #
+    @property
+    def duration(self):
+        """Возвращает продолжительность отпуска в днях"""
+        return (self.end_date - self.start_date).days + 1
+    
+    @property
+    def is_approved(self):
+        """Проверяет, одобрен ли отпуск"""
+        return self.status.name == "Одобрен"
+    
+    @property
+    def display_color(self):
+        """Возвращает цвет для отображения в календаре"""
+        return self.status.color
