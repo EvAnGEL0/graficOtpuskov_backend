@@ -6,8 +6,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import timedelta  # ⚠️ ОШИБКА 1: Не было импорта timedelta
 
-from .. import crud, schemas, auth, database
-
+# Абсолютные импорты (без точек)
+import crud
+import schemas
+import auth
+import database
 router = APIRouter()
 
 # ==================== ЗАВИСИМОСТИ ====================

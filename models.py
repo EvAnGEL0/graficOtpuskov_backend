@@ -16,7 +16,7 @@ class Department(Base):
     __tablename__ = "departments"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False, comment="Название отдела (уникальное)")
+    name = Column(String(100), unique=True, nullable=False)
     
     # Обратная связь: один отдел → много сотрудников
     employees = relationship("Employee", back_populates="department")
@@ -28,7 +28,7 @@ class Position(Base):
     __tablename__ = "positions"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False, comment="Название должности")
+    name = Column(String(100), unique=True, nullable=False)
     
     # Обратная связь: должность → сотрудники
     employees = relationship("Employee", back_populates="position")
@@ -49,8 +49,8 @@ class Role(Base):
     __tablename__ = "roles"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), unique=True, nullable=False, comment="Название роли")
-    description = Column(String(255), comment="Описание прав доступа")
+    name = Column(String(50), unique=True, nullable=False, )
+    description = Column(String(255), )
     
     # Обратная связь: роль → пользователи
     users = relationship("User", back_populates="role")
@@ -63,8 +63,8 @@ class RequestStatus(Base):
     __tablename__ = "request_statuses"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), unique=True, nullable=False, comment="Название статуса")
-    description = Column(String(255), comment="Подробное описание статуса")
+    name = Column(String(50), unique=True, nullable=False)
+    description = Column(String(255))
     
     # Обратная связь: статус → заявки на отпуск
     vacations = relationship("Vacation", back_populates="status")
@@ -87,23 +87,19 @@ class Employee(Base):
     __tablename__ = "employees"
 
     id = Column(Integer, primary_key=True, index=True)
-    first_name = Column(String(50), nullable=False, comment="Имя сотрудника")
-    last_name = Column(String(50), nullable=False, comment="Фамилия сотрудника")
-    middle_name = Column(String(50), comment="Отчество сотрудника (опционально)")
-    start_working = Column(Date, comment="Дата приема на работу")
-    color = Column(String(7), default="#3498db", comment="Цвет для отображения в календаре")
+    first_name = Column(String(50), nullable=False)
+    last_name = Column(String(50), nullable=False)
+    middle_name = Column(String(50))
+    start_working = Column(Date)
+    color = Column(String(7), default="#3498db")
     
     # Связь с отделом (многие к одному)
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False,
-                          comment="ID отдела из справочника departments")
-    department = relationship("Department", back_populates="employees",
-                            comment="Отдел, в котором работает сотрудник")
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    department = relationship("Department", back_populates="employees")
     
     # Связь с должностью (многие к одному)
-    position_id = Column(Integer, ForeignKey("positions.id"), nullable=False,
-                        comment="ID должности из справочника positions")
-    position = relationship("Position", back_populates="employees",
-                          comment="Должность сотрудника")
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=False)
+    position = relationship("Position", back_populates="employees")
     
     # Обратная связь с пользователем (один к одному)
     user = relationship("User", back_populates="employee", uselist=False)
@@ -123,21 +119,17 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, comment="Логин для входа")
-    hashed_password = Column(String(128), nullable=False, comment="Хэш пароля (bcrypt)")
-    is_active = Column(Boolean, default=True, comment="Активен ли аккаунт")
+    username = Column(String(50), unique=True, nullable=False)
+    hashed_password = Column(String(128), nullable=False)
+    is_active = Column(Boolean, default=True)
     
     # Связь с ролью (многие к одному)
-    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False,
-                    comment="ID роли из справочника roles")
-    role = relationship("Role", back_populates="users",
-                      comment="Роль пользователя (определяет права доступа)")
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    role = relationship("Role", back_populates="users")
     
     # Связь с сотрудником (один к одному)
-    employee_id = Column(Integer, ForeignKey("employees.id"), unique=True, nullable=False,
-                        comment="ID сотрудника из таблицы employees")
-    employee = relationship("Employee", back_populates="user",
-                          comment="Сотрудник, связанный с этим аккаунтом")
+    employee_id = Column(Integer, ForeignKey("employees.id"), unique=True, nullable=False)
+    employee = relationship("Employee", back_populates="user")
     
     # Метод для верификации пароля
     def verify_password(self, plain_password):
@@ -162,21 +154,17 @@ class Vacation(Base):
     __tablename__ = "vacations"
     
     id = Column(Integer, primary_key=True, index=True)
-    start_date = Column(Date, nullable=False, comment="Дата начала отпуска")
-    end_date = Column(Date, nullable=False, comment="Дата окончания отпуска")
-    comment = Column(String(255), comment="Комментарий (например, причина отклонения)")
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    comment = Column(String(255))
     
     # Связь со сотрудником (многие к одному)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False,
-                        comment="ID сотрудника из таблицы employees")
-    employee = relationship("Employee", back_populates="vacations",
-                          comment="Сотрудник, подавший заявку")
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    employee = relationship("Employee", back_populates="vacations")
     
     # =============== СВЯЗЬ СО СТАТУСОМ =============== #
-    status_id = Column(Integer, ForeignKey("request_statuses.id"), nullable=False,
-                      comment="ID статуса из справочника request_statuses")
-    status = relationship("RequestStatus", back_populates="vacations",
-                        comment="Текущий статус заявки")
+    status_id = Column(Integer, ForeignKey("request_statuses.id"), nullable=False)
+    status = relationship("RequestStatus", back_populates="vacations")
     
     # =============== ДОПОЛНИТЕЛЬНЫЕ СВОЙСТВА =============== #
     @property

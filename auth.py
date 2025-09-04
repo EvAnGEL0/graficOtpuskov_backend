@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from . import schemas, crud, database, models
+import schemas, crud, database, models
 
 # ==================== НАСТРОЙКИ АВТОРИЗАЦИИ ====================
 # Секретный ключ для подписи токенов (НИКОГДА не храните в коде в продакшене!)

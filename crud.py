@@ -1,6 +1,7 @@
 # crud.py
 from sqlalchemy.orm import Session
-from . import models, schemas
+import models
+import schemas
 
 # ==================== СПРАВОЧНИКИ ====================
 
