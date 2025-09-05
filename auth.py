@@ -9,7 +9,7 @@ from typing import Optional
 from schemas import TokenData
 
 # Настройки
-SECRET_KEY = "super-secret-key-for-jwt"  # 🔐 В реальности хранить в .env!
+SECRET_KEY = "a1b2c3d4e5f67890abcdef1234567890fedcba09876543210987654321fedcba"  # 🔐 В реальности хранить в .env!
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
