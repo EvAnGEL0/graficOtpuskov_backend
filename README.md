@@ -18,3 +18,8 @@ python3 -m pytest tests/ -v
 
 
 
+создание структуры проекта
+mkdir -p fastapi_project/{database/models,schemas,api/v1,services,dependencies,core}
+cd fastapi_project
+touch main.py
+touch database/__init__.py database/models/*.py schemas/*.py api/v1/*.py services/*.py dependencies/deps.py core/*.py
