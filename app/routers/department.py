@@ -19,7 +19,7 @@ async def read_departments(skip: int = 0, limit: int = 100, db: AsyncSession = D
     return departments
 
 
-# Получение должности по ID
+ # Получение должности по ID
 @router.get("/{departments_id}",response_model=department_schema.Department)
 async def read_roles(departments_id: int, db:AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Department_s).where(models.Department_s.id == departments_id))
