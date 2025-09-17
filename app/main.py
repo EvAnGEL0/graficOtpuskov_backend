@@ -7,6 +7,7 @@ from app import models
 from app.schemas import role_s as role_schema
 from app.routers import role as role_router
 from app.routers import department as department_router
+from app.routers import rank as rank_router
 
 app = FastAPI()
 
@@ -24,6 +25,7 @@ async def startup_event():
 # Подключаем роутеры
 app.include_router(role_router.router)
 app.include_router(department_router.router)
+app.include_router(rank_router.router)
 
 
 @app.get("/")
