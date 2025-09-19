@@ -10,4 +10,4 @@ class Department_s (Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     # Обратная связь
-    staff = relationship("Staff", back_populates="departments")
+    staff = relationship("Staff", back_populates="department")

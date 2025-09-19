@@ -1,8 +1,9 @@
+# app/schemas/staff.py
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
 
-# Базовая схема
+# Базовая схема без связей
 class StaffBase(BaseModel):
     last_name: str
     first_name: str
@@ -13,40 +14,26 @@ class StaffBase(BaseModel):
     department_id: int
     position_id: int
     rank_id: int
-    role_id: int
     supervisor_id: Optional[int] = None
+    is_active: bool = True
 
-# Для создания сотрудника
+# Для создания
 class StaffCreate(StaffBase):
     pass
 
-# Для обновления сотрудника
-class StaffUpdate(StaffBase):
-    pass
-
-# Для ответа (без связей)
-class StaffShort(StaffBase):
+# Для ответа без связей
+class StaffResponse(StaffBase):
     id: int
-    is_active: bool
 
     class Config:
         from_attributes = True
 
-# Для ответа (с вложенными объектами)
-class Staff(StaffShort):
-    department: 'Department'
-    position: 'Position'
-    rank: 'Rank'
-    role: 'Role_s'
-    supervisor: Optional['StaffShort'] = None
+# Для ответа с связями (если используешь selectinload)
+class StaffWithRelations(StaffBase):
+    id: int
+    department: Optional['DepartmentResponse'] = None
+    position: Optional['PositionResponse'] = None
+    rank: Optional['RankResponse'] = None
 
     class Config:
         from_attributes = True
-
-# Импорты для вложенных схем
-from .department import Department
-from .position import Position
-from .rank import Rank
-
-# Обнови аннотации типов
-Staff.model_rebuild()

@@ -21,8 +21,9 @@ class Staff(Base):
     supervisor_id = Column(Integer, ForeignKey("staff.id"), nullable=True)
     
     # Связи
-    department = relationship("Department", back_populates="staff")
-    position = relationship("Position", back_populates="staff")
-    rank = relationship("Rank", back_populates="staff")
+    department = relationship("Department_s", back_populates="staff")
+    position = relationship("Position_s", back_populates="staff")
+    rank = relationship("Rank_s", back_populates="staff")
     supervisor = relationship("Staff", remote_side=[id], back_populates="subordinates")
     subordinates = relationship("Staff", back_populates="supervisor")
+    vacation_schedules = relationship("VacationSchedule", back_populates="staff")  # Новая связь
