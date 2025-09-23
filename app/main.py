@@ -13,6 +13,7 @@ from app.routers import rank as rank_router
 from app.routers import position as position_router
 from app.routers import staff as staff_router
 from app.routers import vacation_schedule as vacation_router
+from app.routers import user as user_router
 
 
 
@@ -36,6 +37,7 @@ app.include_router(rank_router.router)
 app.include_router(position_router.router)
 app.include_router(staff_router.router)
 app.include_router(vacation_router.router)
+app.include_router(user_router.router)
 
 
 @app.get("/")

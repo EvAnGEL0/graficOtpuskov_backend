@@ -13,3 +13,5 @@ fastapi[all]
 databases[sqlite]
 aiosqlite
 asyncpg
+passlib
+bcrypt

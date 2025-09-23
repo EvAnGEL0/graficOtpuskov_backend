@@ -5,19 +5,19 @@ from app.config.database import Base
 class Staff(Base):
     __tablename__ = "staff"
 
-    id = Column(Integer, primary_key=True, index=True)
-    last_name = Column(String, index=True)      # Фамилия
-    first_name = Column(String, index=True)     # Имя
-    middle_name = Column(String, nullable=True) # Отчество
-    hire_date = Column(Date)                    # Дата трудоустройства
-    dismissal_date = Column(Date, nullable=True) # Дата увольнения
-    display_color = Column(String, nullable=True) # Цвет отображения
-    is_active = Column(Boolean, default=True)   # Активен ли сотрудник
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    last_name = Column(String, index=True)
+    first_name = Column(String, index=True)
+    middle_name = Column(String, nullable=True)
+    hire_date = Column(Date)
+    dismissal_date = Column(Date, nullable=True)
+    display_color = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
     
-    # Внешние ключи
-    department_id = Column(Integer, ForeignKey("department_s.id"))
-    position_id = Column(Integer, ForeignKey("position_s.id"))
-    rank_id = Column(Integer, ForeignKey("rank_s.id"))
+    # Внешние ключи (сделаны nullable=True)
+    department_id = Column(Integer, ForeignKey("department_s.id"), nullable=True)
+    position_id = Column(Integer, ForeignKey("position_s.id"), nullable=True)
+    rank_id = Column(Integer, ForeignKey("rank_s.id"), nullable=True)
     supervisor_id = Column(Integer, ForeignKey("staff.id"), nullable=True)
     
     # Связи
@@ -26,4 +26,5 @@ class Staff(Base):
     rank = relationship("Rank_s", back_populates="staff")
     supervisor = relationship("Staff", remote_side=[id], back_populates="subordinates")
     subordinates = relationship("Staff", back_populates="supervisor")
-    vacation_schedules = relationship("VacationSchedule", back_populates="staff")  # Новая связь
+    vacation_schedules = relationship("VacationSchedule", back_populates="staff")
+    user_account = relationship("User", back_populates="staff", uselist=False)
