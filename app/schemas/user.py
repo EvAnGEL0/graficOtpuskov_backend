@@ -1,3 +1,5 @@
+# app/schemas/user.py
+
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -5,7 +7,7 @@ from datetime import datetime
 # Существующие схемы
 class UserBase(BaseModel):
     login: str
-    id_role_s: int
+    id_role_s: int  # Пока оставим для создания/обновления
     id_staff: int
     is_active: bool = True
 
@@ -15,8 +17,12 @@ class UserCreate(UserBase):
 class UserUpdate(UserBase):
     password: Optional[str] = None
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
+    login: str
+    role_name: str  # Новое поле: имя роли
+    id_staff: int
+    is_active: bool
 
     class Config:
         from_attributes = True

@@ -8,6 +8,7 @@ from app.schemas import user as user_schema
 from app.config.security import verify_password, get_password_hash, create_access_token, decode_access_token
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import selectinload  # <-- Добавьте этот импорт
 
 # Создаем OAuth2PasswordBearer здесь, а не внутри функции
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -94,41 +95,59 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     payload = decode_access_token(token)
     if payload is None:
         raise credentials_exception
-    
+
     login: str = payload.get("sub")
     if login is None:
         raise credentials_exception
-    
+
     result = await db.execute(
-        select(models.User).where(models.User.login == login)
+        select(models.User)
+        .options(selectinload(models.User.role))  # Загружаем связь с ролью
+        .where(models.User.login == login)
     )
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         raise credentials_exception
-    
+
     return user
 
 # Получение информации о текущем пользователе
 @router.get("/me", response_model=user_schema.UserResponse)
 async def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+    # Возвращаем схему с role_name
+    return user_schema.UserResponse(
+        id=current_user.id,
+        login=current_user.login,
+        role_name=current_user.role.name,  # Используем имя роли
+        id_staff=current_user.id_staff,
+        is_active=current_user.is_active
+    )
 
 # Получение пользователя по ID
 @router.get("/{user_id}", response_model=user_schema.UserResponse)
 async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(models.User).where(models.User.id == user_id)
+        select(models.User)
+        .options(selectinload(models.User.role))
+        .where(models.User.id == user_id)
     )
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+
+    return user_schema.UserResponse(
+        id=user.id,
+        login=user.login,
+        role_name=user.role.name,
+        id_staff=user.id_staff,
+        is_active=user.is_active
+    )
 
 
 
@@ -136,10 +155,21 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/", response_model=List[user_schema.UserResponse])
 async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(models.User).offset(skip).limit(limit)
+        select(models.User)
+        .options(selectinload(models.User.role))
+        .offset(skip).limit(limit)
     )
     users = result.scalars().all()
-    return users
+    return [
+        user_schema.UserResponse(
+            id=user.id,
+            login=user.login,
+            role_name=user.role.name,
+            id_staff=user.id_staff,
+            is_active=user.is_active
+        )
+        for user in users
+    ]
 
 # Обновление пользователя
 @router.put("/{user_id}", response_model=user_schema.UserResponse)
