@@ -14,10 +14,14 @@ from app.routers import position as position_router
 from app.routers import staff as staff_router
 from app.routers import vacation_schedule as vacation_router
 from app.routers import user as user_router
+from fastapi.security import OAuth2PasswordBearer
 
 
 
 app = FastAPI()
+
+# Создаем экземпляр OAuth2PasswordBearer
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
 # Добавляем CORS middleware
 add_cors_middleware(app)
@@ -43,5 +47,10 @@ app.include_router(user_router.router)
 @app.get("/")
 def read_root():
     return {"test": "v1.0"}
+
+# Тестовый endpoint, защищенный JWT
+@app.get("/protected")
+async def protected_route(token: str = Depends(oauth2_scheme)):
+    return {"message": "This is a protected route", "token": token}
 
 

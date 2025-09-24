@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from typing import List
 from app.config.database import get_db
 from app import models
 from app.schemas import user as user_schema
-from typing import List
+from app.config.security import verify_password, get_password_hash, create_access_token, decode_access_token
+from datetime import timedelta
+from fastapi.security import OAuth2PasswordBearer
+
+# Создаем OAuth2PasswordBearer здесь, а не внутри функции
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 router = APIRouter(
     prefix="/users",
@@ -38,11 +44,10 @@ async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(g
     if not role:
         raise HTTPException(status_code=400, detail="Role not found")
     
-    # Создаем нового пользователя
-    # ВАЖНО: В реальном приложении нужно хэшировать пароль!
+    # Создаем нового пользователя с хэшированным паролем
     new_user = models.User(
         login=user.login,
-        password=user.password,  # TODO: хэшировать пароль
+        password=get_password_hash(user.password),  # Хэшируем пароль
         id_role_s=user.id_role_s,
         id_staff=user.id_staff,
         is_active=user.is_active
@@ -51,6 +56,67 @@ async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(g
     await db.commit()
     await db.refresh(new_user)
     return new_user
+
+# Аутентификация пользователя и выдача JWT токена
+@router.post("/login", response_model=user_schema.Token)
+async def login_for_access_token(user_credentials: user_schema.UserLogin, db: AsyncSession = Depends(get_db)):
+    # Находим пользователя по логину
+    result = await db.execute(
+        select(models.User).where(models.User.login == user_credentials.login)
+    )
+    user = result.scalar_one_or_none()
+    
+    # Проверяем существование пользователя и правильность пароля
+    if not user or not verify_password(user_credentials.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    
+    # Создаем JWT токен
+    access_token_expires = timedelta(minutes=30)
+    access_token = create_access_token(
+        data={"sub": user.login, "user_id": user.id}, 
+        expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# Получение текущего пользователя по токену
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+    
+    login: str = payload.get("sub")
+    if login is None:
+        raise credentials_exception
+    
+    result = await db.execute(
+        select(models.User).where(models.User.login == login)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user is None:
+        raise credentials_exception
+    
+    return user
+
+# Получение информации о текущем пользователе
+@router.get("/me", response_model=user_schema.UserResponse)
+async def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
 
 # Получение пользователя по ID
 @router.get("/{user_id}", response_model=user_schema.UserResponse)
@@ -64,6 +130,8 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+
+
 # Получение всех пользователей
 @router.get("/", response_model=List[user_schema.UserResponse])
 async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
@@ -72,30 +140,6 @@ async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends
     )
     users = result.scalars().all()
     return users
-
-# Аутентификация пользователя
-@router.post("/login")
-async def login_user(user_credentials: user_schema.UserLogin, db: AsyncSession = Depends(get_db)):
-    # Находим пользователя по логину
-    result = await db.execute(
-        select(models.User).where(models.User.login == user_credentials.login)
-    )
-    user = result.scalar_one_or_none()
-    
-    if not user or user.password != user_credentials.password:  # TODO: сравнение хэшей
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    if not user.is_active:
-        raise HTTPException(status_code=401, detail="User is deactivated")
-    
-    # В реальном приложении здесь должен быть JWT токен
-    return {
-        "user_id": user.id,
-        "login": user.login,
-        "staff_id": user.id_staff,
-        "role_id": user.id_role_s,
-        "message": "Login successful"
-    }
 
 # Обновление пользователя
 @router.put("/{user_id}", response_model=user_schema.UserResponse)
@@ -132,7 +176,10 @@ async def update_user(
     
     # Обновляем поля
     for field, value in user_update.dict(exclude_unset=True).items():
-        setattr(db_user, field, value)
+        if field == "password" and value is not None:
+            setattr(db_user, field, get_password_hash(value))  # Хэшируем новый пароль
+        else:
+            setattr(db_user, field, value)
     
     await db.commit()
     await db.refresh(db_user)
