@@ -18,7 +18,6 @@ router = APIRouter(
     tags=["users"]
 )
 
-# Создание пользователя
 @router.post("/", response_model=user_schema.UserResponse)
 async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(get_db)):
     # Проверяем, существует ли пользователь с таким логином
@@ -28,7 +27,7 @@ async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(g
     db_user = result.scalar_one_or_none()
     if db_user:
         raise HTTPException(status_code=400, detail="User with this login already exists")
-    
+
     # Проверяем, существует ли сотрудник
     staff_result = await db.execute(
         select(models.Staff).where(models.Staff.id == user.id_staff)
@@ -36,7 +35,7 @@ async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(g
     staff = staff_result.scalar_one_or_none()
     if not staff:
         raise HTTPException(status_code=400, detail="Staff not found")
-    
+
     # Проверяем, существует ли роль
     role_result = await db.execute(
         select(models.Role_s).where(models.Role_s.id == user.id_role_s)
@@ -44,11 +43,11 @@ async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(g
     role = role_result.scalar_one_or_none()
     if not role:
         raise HTTPException(status_code=400, detail="Role not found")
-    
+
     # Создаем нового пользователя с хэшированным паролем
     new_user = models.User(
         login=user.login,
-        password=get_password_hash(user.password),  # Хэшируем пароль
+        password=get_password_hash(user.password),
         id_role_s=user.id_role_s,
         id_staff=user.id_staff,
         is_active=user.is_active
@@ -56,8 +55,15 @@ async def create_user(user: user_schema.UserCreate, db: AsyncSession = Depends(g
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-    return new_user
 
+    # ✅ Возвращаем в формате UserResponse
+    return user_schema.UserResponse(
+        id=new_user.id,
+        login=new_user.login,
+        role_name=role.name,  # Используем объект роли, который мы уже получили
+        id_staff=new_user.id_staff,
+        is_active=new_user.is_active
+    )
 # Аутентификация пользователя и выдача JWT токена
 @router.post("/login", response_model=user_schema.Token)
 async def login_for_access_token(user_credentials: user_schema.UserLogin, db: AsyncSession = Depends(get_db)):
@@ -170,7 +176,6 @@ async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends
         )
         for user in users
     ]
-
 # Обновление пользователя
 @router.put("/{user_id}", response_model=user_schema.UserResponse)
 async def update_user(
@@ -179,13 +184,15 @@ async def update_user(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
-        select(models.User).where(models.User.id == user_id)
+        select(models.User)
+        .options(selectinload(models.User.role))  # Загружаем связь с ролью
+        .where(models.User.id == user_id)
     )
     db_user = result.scalar_one_or_none()
-    
+
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Проверяем существование сотрудника, если указан
     if user_update.id_staff is not None:
         staff_result = await db.execute(
@@ -194,7 +201,7 @@ async def update_user(
         staff = staff_result.scalar_one_or_none()
         if not staff:
             raise HTTPException(status_code=400, detail="Staff not found")
-    
+
     # Проверяем существование роли, если указана
     if user_update.id_role_s is not None:
         role_result = await db.execute(
@@ -203,18 +210,25 @@ async def update_user(
         role = role_result.scalar_one_or_none()
         if not role:
             raise HTTPException(status_code=400, detail="Role not found")
-    
+
     # Обновляем поля
     for field, value in user_update.dict(exclude_unset=True).items():
         if field == "password" and value is not None:
-            setattr(db_user, field, get_password_hash(value))  # Хэшируем новый пароль
+            setattr(db_user, field, get_password_hash(value))
         else:
             setattr(db_user, field, value)
-    
+
     await db.commit()
     await db.refresh(db_user)
-    return db_user
 
+    # ✅ Возвращаем объект в формате UserResponse
+    return user_schema.UserResponse(
+        id=db_user.id,
+        login=db_user.login,
+        role_name=db_user.role.name,
+        id_staff=db_user.id_staff,
+        is_active=db_user.is_active
+    )
 # Удаление пользователя
 @router.delete("/{user_id}")
 async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
