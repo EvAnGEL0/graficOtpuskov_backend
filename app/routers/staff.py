@@ -53,48 +53,83 @@ async def create_staff(staff: staff_schema.StaffCreate, db: AsyncSession = Depen
     await db.refresh(new_staff)
     return new_staff
 
-# Получение сотрудника по ID (без связей)
-@router.get("/{staff_id}", response_model=staff_schema.StaffResponse)
-async def read_staff(staff_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(models.Staff).where(models.Staff.id == staff_id)
-    )
-    staff = result.scalar_one_or_none()
-    
-    if staff is None:
-        raise HTTPException(status_code=404, detail="Staff not found")
-    return staff
 
-# Получение сотрудника по ID (с загрузкой связей)
-@router.get("/{staff_id}/full", response_model=staff_schema.StaffResponse)
-async def read_staff_full(staff_id: int, db: AsyncSession = Depends(get_db)):
+# Получение всех сотрудников (с загрузкой связей)
+@router.get("/", response_model=list[staff_schema.StaffResponse])
+async def read_staff_list(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(models.Staff)
         .options(
             selectinload(models.Staff.department),
             selectinload(models.Staff.position),
             selectinload(models.Staff.rank),
-            selectinload(models.Staff.supervisor),
-            selectinload(models.Staff.subordinates)
+            selectinload(models.Staff.supervisor)
         )
-        .where(models.Staff.id == staff_id)
-    )
-    staff = result.scalar_one_or_none()
-    
-    if staff is None:
-        raise HTTPException(status_code=404, detail="Staff not found")
-    return staff
-
-# Получение всех сотрудников (без связей)
-@router.get("/", response_model=list[staff_schema.StaffResponse])
-async def read_staff_list(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(models.Staff)
         .offset(skip)
         .limit(limit)
     )
     staff_list = result.scalars().all()
-    return staff_list
+
+    return [
+        staff_schema.StaffResponse(
+            id=staff.id,
+            last_name=staff.last_name,
+            first_name=staff.first_name,
+            middle_name=staff.middle_name,
+            hire_date=staff.hire_date,
+            dismissal_date=staff.dismissal_date,
+            display_color=staff.display_color,
+            department_id=staff.department_id,
+            position_id=staff.position_id,
+            rank_id=staff.rank_id,
+            supervisor_id=staff.supervisor_id,
+            is_active=staff.is_active,
+            # Добавляем названия
+            department_name=staff.department.name if staff.department else None,
+            position_name=staff.position.name if staff.position else None,
+            rank_name=staff.rank.name if staff.rank else None,
+            supervisor_name=f"{staff.supervisor.first_name} {staff.supervisor.last_name}" if staff.supervisor else None
+        )
+        for staff in staff_list
+    ]
+
+# Получение сотрудника по ID
+@router.get("/{staff_id}", response_model=staff_schema.StaffResponse)
+async def read_staff(staff_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(models.Staff)
+        .options(
+            selectinload(models.Staff.department),
+            selectinload(models.Staff.position),
+            selectinload(models.Staff.rank),
+            selectinload(models.Staff.supervisor)
+        )
+        .where(models.Staff.id == staff_id)
+    )
+    staff = result.scalar_one_or_none()
+
+    if staff is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    return staff_schema.StaffResponse(
+        id=staff.id,
+        last_name=staff.last_name,
+        first_name=staff.first_name,
+        middle_name=staff.middle_name,
+        hire_date=staff.hire_date,
+        dismissal_date=staff.dismissal_date,
+        display_color=staff.display_color,
+        department_id=staff.department_id,
+        position_id=staff.position_id,
+        rank_id=staff.rank_id,
+        supervisor_id=staff.supervisor_id,
+        is_active=staff.is_active,
+        # Добавляем названия
+        department_name=staff.department.name if staff.department else None,
+        position_name=staff.position.name if staff.position else None,
+        rank_name=staff.rank.name if staff.rank else None,
+        supervisor_name=f"{staff.supervisor.first_name} {staff.supervisor.last_name}" if staff.supervisor else None
+    )
 
 # Получение всех сотрудников (с загрузкой связей)
 @router.get("/full/", response_model=list[staff_schema.StaffResponse])
@@ -134,18 +169,28 @@ async def update_staff(
     await db.commit()
     await db.refresh(db_staff)
     return db_staff
-
 # Удаление сотрудника
 @router.delete("/{staff_id}")
 async def delete_staff(staff_id: int, db: AsyncSession = Depends(get_db)):
+    # Проверяем, есть ли у сотрудника связанный пользователь
+    user_result = await db.execute(
+        select(models.User).where(models.User.id_staff == staff_id)
+    )
+    user = user_result.scalar_one_or_none()
+
+    if user:
+        # Если есть связанный пользователь — удаляем его
+        await db.delete(user)
+
+    # Теперь удаляем сотрудника
     result = await db.execute(
         select(models.Staff).where(models.Staff.id == staff_id)
     )
     staff = result.scalar_one_or_none()
-    
+
     if staff is None:
         raise HTTPException(status_code=404, detail="Staff not found")
-    
+
     await db.delete(staff)
     await db.commit()
     return {"message": "Staff deleted successfully"}
