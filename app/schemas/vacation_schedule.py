@@ -23,3 +23,18 @@ class VacationSchedule(VacationScheduleBase):
 
     class Config:
         from_attributes = True
+        
+class VacationScheduleResponse(BaseModel):
+    id: int
+    staff_id: int
+    start_date: date
+    end_date: date
+    main_vacation_days: int
+    # Добавим информацию о сотруднике
+    staff_last_name: str
+    staff_first_name: str
+    staff_middle_name: str
+    department_name: str
+
+    class Config:
+        from_attributes = True

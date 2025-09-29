@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from sqlalchemy import select
 from app.config.database import get_db
 from app import models
@@ -21,6 +23,44 @@ async def create_vacation_schedule(
     await db.commit()
     await db.refresh(new_vacation)
     return new_vacation
+
+
+
+@router.get("/boss/{boss_id}", response_model=list[vacation_schema.VacationScheduleResponse])
+async def read_vacation_schedules_by_boss(boss_id: int, db: AsyncSession = Depends(get_db)):
+    # Найти всех сотрудников, у которых supervisor_id == boss_id
+    result = await db.execute(
+        select(models.Staff)
+        .options(
+            selectinload(models.Staff.vacation_schedules),
+            selectinload(models.Staff.department)
+        )
+        .where(models.Staff.supervisor_id == boss_id)
+    )
+    staff_list = result.scalars().all()
+
+    # Собираем все отпуска
+    vacations = []
+    for staff in staff_list:
+        for vac in staff.vacation_schedules:
+            vacations.append(
+                vacation_schema.VacationScheduleResponse(
+                    id=vac.id,
+                    staff_id=vac.staff_id,
+                    start_date=vac.start_date,
+                    end_date=vac.end_date,
+                    main_vacation_days=vac.main_vacation_days,
+                    staff_last_name=staff.last_name,
+                    staff_first_name=staff.first_name,
+                    staff_middle_name=staff.middle_name,
+                    department_name=staff.department.name if staff.department else None
+                )
+            )
+
+    return vacations
+
+
+
 
 # Получение графика отпуска по ID
 @router.get("/{vacation_id}", response_model=vacation_schema.VacationSchedule)
