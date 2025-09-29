@@ -93,6 +93,44 @@ async def read_staff_list(skip: int = 0, limit: int = 100, db: AsyncSession = De
         for staff in staff_list
     ]
 
+# Получение всех сотрудников (с загрузкой связей)
+@router.get("/boss/{boss_id}", response_model=list[staff_schema.StaffResponse])
+async def read_staff_list(boss_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(models.Staff)
+        .options(
+            selectinload(models.Staff.department),
+            selectinload(models.Staff.position),
+            selectinload(models.Staff.rank),
+            selectinload(models.Staff.supervisor)
+        )
+        .where(models.Staff.supervisor_id == boss_id)    )
+    staff_list = result.scalars().all()
+
+    return [
+        staff_schema.StaffResponse(
+            id=staff.id,
+            last_name=staff.last_name,
+            first_name=staff.first_name,
+            middle_name=staff.middle_name,
+            hire_date=staff.hire_date,
+            dismissal_date=staff.dismissal_date,
+            display_color=staff.display_color,
+            department_id=staff.department_id,
+            position_id=staff.position_id,
+            rank_id=staff.rank_id,
+            supervisor_id=staff.supervisor_id,
+            is_active=staff.is_active,
+            # Добавляем названия
+            department_name=staff.department.name if staff.department else None,
+            position_name=staff.position.name if staff.position else None,
+            rank_name=staff.rank.name if staff.rank else None,
+            supervisor_name=f"{staff.supervisor.first_name} {staff.supervisor.last_name}" if staff.supervisor else None
+        )
+        for staff in staff_list
+    ]
+
+
 # Получение сотрудника по ID
 @router.get("/{staff_id}", response_model=staff_schema.StaffResponse)
 async def read_staff(staff_id: int, db: AsyncSession = Depends(get_db)):

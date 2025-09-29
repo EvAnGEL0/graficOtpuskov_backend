@@ -156,7 +156,6 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
     )
 
 
-
 # Получение всех пользователей
 @router.get("/", response_model=List[user_schema.UserResponse])
 async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
