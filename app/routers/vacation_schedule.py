@@ -53,7 +53,9 @@ async def read_vacation_schedules_by_boss(boss_id: int, db: AsyncSession = Depen
                     staff_last_name=staff.last_name,
                     staff_first_name=staff.first_name,
                     staff_middle_name=staff.middle_name,
-                    department_name=staff.department.name if staff.department else None
+                    department_name=staff.department.name if staff.department else None,
+                    display_color=staff.display_color or "#ffffff"  # по умолчанию белый
+
                 )
             )
 

@@ -35,6 +35,8 @@ class VacationScheduleResponse(BaseModel):
     staff_first_name: str
     staff_middle_name: str
     department_name: str
+    display_color: str
+
 
     class Config:
         from_attributes = True
