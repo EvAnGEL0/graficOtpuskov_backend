@@ -14,6 +14,7 @@ from app.routers import position as position_router
 from app.routers import staff as staff_router
 from app.routers import vacation_schedule as vacation_router
 from app.routers import user as user_router
+from app.routers import generate_pdf as generate_pdf_router
 from fastapi.security import OAuth2PasswordBearer
 
 
@@ -42,6 +43,7 @@ app.include_router(position_router.router)
 app.include_router(staff_router.router)
 app.include_router(vacation_router.router)
 app.include_router(user_router.router)
+app.include_router(generate_pdf_router.router)
 
 
 @app.get("/")

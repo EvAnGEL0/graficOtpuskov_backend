@@ -15,3 +15,5 @@ aiosqlite
 asyncpg
 passlib
 bcrypt
+docxtpl
+docx2pdf
