@@ -61,6 +61,42 @@ async def read_vacation_schedules_by_boss(boss_id: int, db: AsyncSession = Depen
 
     return vacations
 
+@router.get("/department/{dept_id}", response_model=list[vacation_schema.VacationScheduleKadryResponse])
+async def read_vacation_schedules_by_dept(dept_id: int, db: AsyncSession = Depends(get_db)):
+    # Найти всех сотрудников, у которых supervisor_id == boss_id
+    result = await db.execute(
+        select(models.Staff)
+        .options(
+            selectinload(models.Staff.vacation_schedules),
+            selectinload(models.Staff.department),
+            selectinload(models.Staff.position),
+            selectinload(models.Staff.rank)
+        )
+        .where(models.Staff.department_id == dept_id)
+    )
+    staff_list = result.scalars().all()
+
+    # Собираем все отпуска
+    vacations = []
+    for staff in staff_list:
+        for vac in staff.vacation_schedules:
+            vacations.append(
+                vacation_schema.VacationScheduleKadryResponse(
+                    id=vac.id,
+                    staff_id=vac.staff_id,
+                    start_date=vac.start_date,
+                    end_date=vac.end_date,
+                    main_vacation_days=vac.main_vacation_days,
+                    staff_last_name=staff.last_name,
+                    staff_first_name=staff.first_name,
+                    staff_middle_name=staff.middle_name,
+                    department_name=staff.department.name if staff.department else None,
+                    rank_name=staff.rank.name,   # ✅ Добавлено условие
+                    position_name=staff.position.name
+                )
+            )
+
+    return vacations
 
 
 
