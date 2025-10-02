@@ -4,7 +4,7 @@ from typing import Optional
 
 # Базовая схема
 class VacationScheduleBase(BaseModel):
-    staff_id: int
+    staff_id: Optional[int] = None          # ✅ Необязательное поле
     start_date: date
     end_date: date
     main_vacation_days: int
@@ -15,12 +15,14 @@ class VacationScheduleCreate(VacationScheduleBase):
 
 # Для обновления
 class VacationScheduleUpdate(VacationScheduleBase):
-    pass
-
+    start_date: date
+    end_date: date
+    main_vacation_days: int
+    
 # Для ответа
 class VacationSchedule(VacationScheduleBase):
     id: int
-
+    
     class Config:
         from_attributes = True
         

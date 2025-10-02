@@ -138,11 +138,15 @@ async def read_vacation_schedules_by_staff(staff_id: int, db: AsyncSession = Dep
     vacations = result.scalars().all()
     return vacations
 
+
+
+
+
 # Обновление графика отпуска
 @router.put("/{vacation_id}", response_model=vacation_schema.VacationSchedule)
 async def update_vacation_schedule(
     vacation_id: int,
-    vacation_update: vacation_schema.VacationScheduleUpdate,
+    vacation_update: vacation_schema.VacationScheduleUpdate,  # id не включён
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
@@ -154,13 +158,15 @@ async def update_vacation_schedule(
     if db_vacation is None:
         raise HTTPException(status_code=404, detail="Vacation schedule not found")
     
-    # Обновляем поля
-    for field, value in vacation_update.dict().items():
+     # Обновляем только те поля, что были переданы
+    for field, value in vacation_update.dict(exclude_unset=True).items():
         setattr(db_vacation, field, value)
-    
     await db.commit()
     await db.refresh(db_vacation)
     return db_vacation
+
+
+
 
 # Удаление графика отпуска
 @router.delete("/{vacation_id}")
