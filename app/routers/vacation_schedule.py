@@ -93,6 +93,7 @@ async def read_vacation_schedules_by_dept(dept_id: int, db: AsyncSession = Depen
                     department_name=staff.department.name if staff.department else None,
                     rank_name=staff.rank.name,   # ✅ Добавлено условие
                     position_name=staff.position.name
+                    
                 )
             )
 
